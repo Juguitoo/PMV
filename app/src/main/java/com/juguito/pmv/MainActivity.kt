@@ -21,12 +21,24 @@ import okhttp3.Request
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 
 // ---- Data Classes para parsear la API ----
 data class ApiResponse(val previsiones: List<Prevision>)
 data class Prevision(val line: Int, val destino: String, val hora: String, val seconds: Int, val composition: Composition? = null)
 data class Composition(val Head: Int?, val Tail: Int?)
+
+val Context.dataStore by preferencesDataStore(name = "settings")
+val FAVORITES_KEY = stringSetPreferencesKey("favorites")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,12 +57,16 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MetroApp() {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
     var expanded by remember { mutableStateOf(false) }
     var selectedStop by remember { mutableStateOf("") }
     var previsiones by remember { mutableStateOf<List<Prevision>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
+    val favoritesFlow = remember { getFavorites(context) }
+    val favorites by favoritesFlow.collectAsState(initial = emptySet())
 
     // Tus paradas
     val stops: Map<String, Int> = mapOf(
@@ -199,6 +215,12 @@ fun MetroApp() {
         "Russafa" to 191
     )
 
+    val sortedStops = remember(favorites) {
+        val favStops = stops.filterKeys { it in favorites }
+        val nonFavStops = stops.filterKeys { it !in favorites }
+        favStops + nonFavStops
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -224,9 +246,38 @@ fun MetroApp() {
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                stops.forEach { (name, code) ->
+                sortedStops.forEach { (name, code) ->
                     DropdownMenuItem(
-                        text = { Text(name) },
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(name)
+                                IconButton(
+                                    onClick = {
+                                        scope.launch {
+                                            val newFavorites = if (name in favorites) {
+                                                favorites - name
+                                            } else {
+                                                favorites + name
+                                            }
+                                            saveFavorites(context, newFavorites)
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (name in favorites) {
+                                            Icons.Default.Star // ⭐ rellena
+                                        } else {
+                                            Icons.Outlined.StarBorder // ☆ vacía
+                                        },
+                                        contentDescription = "Favorito",
+                                        tint = if(name in favorites) Color.Yellow else Color.Gray
+                                    )
+                                }
+                            }
+                        },
                         onClick = {
                             selectedStop = name
                             expanded = false
@@ -245,7 +296,6 @@ fun MetroApp() {
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
 
         if(isLoading){
             CircularProgressIndicator()
@@ -299,6 +349,7 @@ fun MetroApp() {
         }
 
     }
+
 }
 
 // ---- Función de red ----
@@ -331,4 +382,18 @@ suspend fun getMetroInfo(stopId: Int): List<Prevision>? {
         }
     }
 }
+
+suspend fun saveFavorites(context: Context, favorites: Set<String>) {
+    context.dataStore.edit { prefs ->
+        prefs[FAVORITES_KEY] = favorites
+    }
+}
+
+fun getFavorites(context: Context): Flow<Set<String>> {
+    return context.dataStore.data.map { prefs ->
+        prefs[FAVORITES_KEY] ?: emptySet()
+    }
+}
+
+
 
