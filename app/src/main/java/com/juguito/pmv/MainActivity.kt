@@ -302,56 +302,65 @@ fun MetroApp() {
         } else if (previsiones.isEmpty()) {
             Text("No hay previsiones disponibles", style = MaterialTheme.typography.bodyMedium)
         } else {
-            LazyColumn {
-                items(previsiones) { prevision ->
-                    val minutos = if (prevision.seconds > 60) prevision.seconds / 60 else 0
-                    val segundos = prevision.seconds % 60
-                    val resto = if(minutos != 0) "${minutos} m ${segundos}s" else "${segundos}s"
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("🚇 Línea: ${prevision.line}", style = MaterialTheme.typography.bodyLarge)
-                            Text("🎯 Destino: ${prevision.destino}", style = MaterialTheme.typography.bodyLarge)
-                            val tipo = when {
-                                prevision.composition != null -> if (prevision.composition.Head.toString().startsWith("38")) "⚪ Tranvía blanco" else "🔴 Tranvía rojo"
-                                else -> "🚆Metro"
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ){
+                LazyColumn (
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ){
+                    items(previsiones) { prevision ->
+                        val minutos = if (prevision.seconds > 60) prevision.seconds / 60 else 0
+                        val segundos = prevision.seconds % 60
+                        val resto = if(minutos != 0) "${minutos} m ${segundos}s" else "${segundos}s"
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("🚇 Línea: ${prevision.line}", style = MaterialTheme.typography.bodyLarge)
+                                Text("🎯 Destino: ${prevision.destino}", style = MaterialTheme.typography.bodyLarge)
+                                val tipo = when {
+                                    prevision.composition != null -> if (prevision.composition.Head.toString().startsWith("38")) "⚪ Tranvía blanco" else "🔴 Tranvía rojo"
+                                    else -> "🚆Metro"
+                                }
+                                val vagones = when {
+                                    prevision.composition != null -> if (prevision.composition.Head != prevision.composition.Tail) 2 else 1
+                                    else -> "N/A"
+                                }
+                                Text("🚋 Vagones: $vagones", style = MaterialTheme.typography.bodyLarge)
+                                Text("🏷 Tipo: $tipo", style = MaterialTheme.typography.bodyLarge)
+                                Text("🕒 Hora: ${prevision.hora}, en ${resto}", style = MaterialTheme.typography.bodyLarge)
                             }
-                            val vagones = when {
-                                prevision.composition != null -> if (prevision.composition.Head != prevision.composition.Tail) 2 else 1
-                                else -> "N/A"
-                            }
-                            Text("🚋 Vagones: $vagones", style = MaterialTheme.typography.bodyLarge)
-                            Text("🏷 Tipo: $tipo", style = MaterialTheme.typography.bodyLarge)
-                            Text("🕒 Hora: ${prevision.hora}, en ${resto}", style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
+                Button(
+                    onClick = {
+                        if (selectedStop.isNotEmpty()) {
+                            val stopId = stops[selectedStop]!!
+                            scope.launch {
+                                isLoading = true
+                                val result = getMetroInfo(stopId)
+                                previsiones = result ?: emptyList()
+                                isLoading = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Recargar")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Recargar")
+                }
             }
         }
-
-        Button(
-            onClick = {
-                if (selectedStop.isNotEmpty()) {
-                    val stopId = stops[selectedStop]!!
-                    scope.launch {
-                        isLoading = true
-                        val result = getMetroInfo(stopId)
-                        previsiones = result ?: emptyList()
-                        isLoading = false
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-        ) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Recargar")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Recargar")
-        }
-
     }
 
 }
