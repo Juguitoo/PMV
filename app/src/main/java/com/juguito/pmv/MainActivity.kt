@@ -304,7 +304,6 @@ fun MetroApp() {
         } else {
             LazyColumn {
                 items(previsiones) { prevision ->
-                    val vagones = if (prevision.composition?.Head == prevision.composition?.Tail) 1 else 2
                     val minutos = if (prevision.seconds > 60) prevision.seconds / 60 else 0
                     val segundos = prevision.seconds % 60
                     val resto = if(minutos != 0) "${minutos} m ${segundos}s" else "${segundos}s"
@@ -317,11 +316,16 @@ fun MetroApp() {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("🚇 Línea: ${prevision.line}", style = MaterialTheme.typography.bodyLarge)
                             Text("🎯 Destino: ${prevision.destino}", style = MaterialTheme.typography.bodyLarge)
+                            val tipo = when {
+                                prevision.composition != null -> if (prevision.composition.Head.toString().startsWith("38")) "⚪ Tranvía blanco" else "🔴 Tranvía rojo"
+                                else -> "🚆Metro"
+                            }
                             val vagones = when {
                                 prevision.composition != null -> if (prevision.composition.Head != prevision.composition.Tail) 2 else 1
                                 else -> "N/A"
                             }
                             Text("🚋 Vagones: $vagones", style = MaterialTheme.typography.bodyLarge)
+                            Text("🏷 Tipo: $tipo", style = MaterialTheme.typography.bodyLarge)
                             Text("🕒 Hora: ${prevision.hora}, en ${resto}", style = MaterialTheme.typography.bodyLarge)
                         }
                     }
