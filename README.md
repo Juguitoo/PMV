@@ -54,7 +54,7 @@ This project is **not monetized**.
 
 ## 🙌 Credits
 
-- **Developer:** Hugo
+- **Developer:** Juguito
 
 - **API Provider:** Alex Badi (Metro API)
 
