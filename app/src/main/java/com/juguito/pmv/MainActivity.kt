@@ -1,6 +1,5 @@
 package com.juguito.pmv
 
-import android.app.AlertDialog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,6 +36,8 @@ import kotlinx.coroutines.flow.map
 data class ApiResponse(val previsiones: List<Prevision>)
 data class Prevision(val line: Int, val destino: String, val hora: String, val seconds: Int, val composition: Composition? = null)
 data class Composition(val Head: Int?, val Tail: Int?)
+
+data class UpdateInfo(val version: String, val url: String, val changelog: String)
 
 val Context.dataStore by preferencesDataStore(name = "settings")
 val FAVORITES_KEY = stringSetPreferencesKey("favorites")
@@ -223,6 +224,13 @@ fun MetroApp() {
         favStops + nonFavStops
     }
 
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+
+    LaunchedEffect(Unit) {
+        val info = checkForUpdates(context)
+        if (info != null) updateInfo = info
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -373,6 +381,34 @@ fun MetroApp() {
 
     if(errorDialog) showErrorDialog(onDismiss = {errorDialog = false})
 
+    updateInfo?.let { info ->
+        AlertDialog(
+            onDismissRequest = { updateInfo = null },
+            title = { Text("Nueva versión disponible") },
+            text = { Text("Versión ${info.version}\n\n${info.changelog}") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        val ok = downloadApk(context, info)
+                        updateInfo = null
+                        if (ok) {
+                            androidx.compose.material3.SnackbarHostState().showSnackbar(
+                                "APK descargado en /Download"
+                            )
+                        }
+                    }
+                }) {
+                    Text("Descargar APK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { updateInfo = null }) {
+                    Text("Más tarde")
+                }
+            }
+        )
+    }
+
 }
 
 // ---- Función de red ----
@@ -431,6 +467,69 @@ fun showErrorDialog(onDismiss: () -> Unit) {
         title = {Text("Error en la consulta")},
         text = {Text("Ha ocurrido un problema al obtener las previsiones. Inténtalo más tarde.")}
     )
+}
+
+suspend fun checkForUpdates(context: Context): UpdateInfo? {
+    val client = OkHttpClient()
+    val request = Request.Builder()
+        .url("https://juguitoo.github.io/PMV/latest.json")
+        .build()
+
+    return withContext(Dispatchers.IO) {
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+
+                val body = response.body?.string() ?: return@withContext null
+                val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+                val adapter = moshi.adapter(UpdateInfo::class.java)
+                val info = adapter.fromJson(body) ?: return@withContext null
+
+                // Obtener la versión actual instalada
+                val currentVersion = try {
+                    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                    packageInfo.versionName
+                } catch (e: Exception) {
+                    "0.0.0" // fallback por si algo falla
+                }
+
+                // Compara la versión actual con la del JSON
+                if (info.version != currentVersion) info else null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+}
+
+suspend fun downloadApk(context: Context, updateInfo: UpdateInfo): Boolean {
+    val client = OkHttpClient()
+    val request = Request.Builder().url(updateInfo.url).build()
+
+    return withContext(Dispatchers.IO) {
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext false
+
+                val file = java.io.File(
+                    android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_DOWNLOADS
+                    ),
+                    "ParadasMetroValencia-${updateInfo.version}.apk"
+                )
+
+                response.body?.byteStream()?.use { input ->
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
+
+                true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }
 
 
