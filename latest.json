@@ -1,5 +1,5 @@
 {
-    "version": "1.1.3",
-    "url": "https://github.com/Juguitoo/PMV/releases/download/v1.1.3/PMV-v1.1.3.apk",
-    "changelog": "Layout improvements, better API error handling and new update checker system."
+    "version": "1.1.4",
+    "url": "https://github.com/Juguitoo/PMV/releases/download/v1.1.4/PMV-v1.1.4.apk",
+    "changelog": "row items center vertically"
 }
