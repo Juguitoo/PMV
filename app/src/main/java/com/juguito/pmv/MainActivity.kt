@@ -1,5 +1,6 @@
 package com.juguito.pmv
 
+import android.app.AlertDialog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -64,6 +65,7 @@ fun MetroApp() {
     var selectedStop by remember { mutableStateOf("") }
     var previsiones by remember { mutableStateOf<List<Prevision>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var errorDialog by remember { mutableStateOf(false) }
 
     val favoritesFlow = remember { getFavorites(context) }
     val favorites by favoritesFlow.collectAsState(initial = emptySet())
@@ -287,7 +289,12 @@ fun MetroApp() {
                             scope.launch {
                                 isLoading = true
                                 val result = getMetroInfo(code)
-                                previsiones = result ?: emptyList()
+                                if(result == null){
+                                    errorDialog = true
+                                    previsiones = emptyList()
+                                }else{
+                                    previsiones = result
+                                }
                                 isLoading = false
                             }
                         }
@@ -364,6 +371,8 @@ fun MetroApp() {
         }
     }
 
+    if(errorDialog) showErrorDialog(onDismiss = {errorDialog = false})
+
 }
 
 // ---- Función de red ----
@@ -380,6 +389,7 @@ suspend fun getMetroInfo(stopId: Int): List<Prevision>? {
                 val body = response.body?.string()
 
                 if (!response.isSuccessful || body == null) return@withContext null
+
 
                 val moshi = Moshi.Builder()
                     .add(KotlinJsonAdapterFactory())
@@ -407,6 +417,20 @@ fun getFavorites(context: Context): Flow<Set<String>> {
     return context.dataStore.data.map { prefs ->
         prefs[FAVORITES_KEY] ?: emptySet()
     }
+}
+
+@Composable
+fun showErrorDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {onDismiss()},
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Aceptar")
+            }
+        },
+        title = {Text("Error en la consulta")},
+        text = {Text("Ha ocurrido un problema al obtener las previsiones. Inténtalo más tarde.")}
+    )
 }
 
 
