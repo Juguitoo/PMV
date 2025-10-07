@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import android.content.Context
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -235,7 +236,7 @@ fun MetroApp() {
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 20.dp)
     ) {
         Text("Selecciona una parada:", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
@@ -262,7 +263,8 @@ fun MetroApp() {
                         text = {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(name)
                                 IconButton(
