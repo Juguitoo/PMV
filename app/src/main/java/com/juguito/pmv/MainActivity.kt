@@ -332,8 +332,15 @@ fun MetroApp() {
                         .fillMaxWidth()
                 ){
                     items(previsiones) { prevision ->
-                        val minutos = if (prevision.seconds > 60) prevision.seconds / 60 else 0
-                        val segundos = prevision.seconds % 60
+                        var remainingSeconds by remember { mutableIntStateOf(prevision.seconds) }
+                        LaunchedEffect(prevision) {
+                            while (remainingSeconds > 0) {
+                                kotlinx.coroutines.delay(1000)
+                                remainingSeconds--
+                            }
+                        }
+                        val minutos = if (remainingSeconds >= 60) remainingSeconds / 60 else 0
+                        val segundos = remainingSeconds % 60
                         val resto = if(minutos != 0) "${minutos} m ${segundos}s" else "${segundos}s"
                         Card(
                             modifier = Modifier
